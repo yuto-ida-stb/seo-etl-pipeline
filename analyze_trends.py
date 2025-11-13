@@ -7,11 +7,13 @@ from pathlib import Path
 
 def calculate_weekly_changes(df: pd.DataFrame, weeks: int = 12):
     """
-    週次の順位と距離の差分、変化率を計算する
+    期間ごとの順位と距離の差分、変化率を計算する
+
+    注: 週次データの場合は週次比較、日次データの場合は日次比較として動作します。
 
     Args:
         df: マージされたデータフレーム（date, キーワード, URL, ランク, 距離カラムを含む）
-        weeks: 遡る週数（デフォルト12週=3ヶ月）
+        weeks: 遡る期間数（デフォルト12期間=週次なら3ヶ月分）
 
     Returns:
         変化率と差分を含むデータフレーム

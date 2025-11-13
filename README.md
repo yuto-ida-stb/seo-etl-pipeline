@@ -2,14 +2,16 @@
 
 週次のSEOデータを自動的にダウンロード、分析し、Google Driveにアップロードするパイプライン
 
+> **注意**: 現在は日次データで動作確認中です。Google Driveに週次平均データ（3ヶ月分）が配置されると、自動的に週次分析に切り替わります。
+
 ## 機能
 
-- Google Driveからの週次CSVファイルの自動ダウンロード
+- Google Driveからのデータファイル自動ダウンロード
 - 複数ファイルのマージと不要カラムの削除
-- 週次の順位・距離の差分と変化率の計算（3ヶ月分）
-- 分析結果のレポート生成
-- Google Driveへの自動アップロード
-- GitHub Actionsによる週次自動実行
+- 期間比較による順位・距離の差分と変化率の計算
+- 分析結果のレポート生成（改善/下落Top 10など）
+- Google Driveへの結果自動アップロード（analysis_resultsフォルダ）
+- 手動実行ワークフロー（OAuth認証）
 
 ## ディレクトリ構造
 
@@ -92,32 +94,45 @@ git push origin main
 
 ### 運用フロー
 
-1. **週次実行**: 毎週手動で `./run_analysis.sh` を実行
-2. **結果確認**: `data/analysis/` フォルダ内のレポートを確認
-3. **GitHub**: `git push` で結果を共有・バックアップ
+1. **定期実行**: 手動で `./run_analysis.sh` を実行
+   - 現在: 新しいデータが追加されたら実行
+   - 将来: 週次平均データ配置後は毎週実行
+
+2. **結果確認**:
+   - ローカル: `data/analysis/` フォルダ内のレポート
+   - Google Drive: [analysis_resultsフォルダ](https://drive.google.com/drive/folders/1EF8arydCbvLLih_TALvEE2LKOlH2XQEA)
+
+3. **GitHub**: `git push origin main` で結果を共有・バックアップ
 
 ## データ形式
 
 ### 入力CSVファイルの期待フォーマット
 
 ```csv
-keyword,url,rank,distance,date
-"キーワード1","https://example.com/page1",5,1.2,"2024-01-01"
-"キーワード2","https://example.com/page2",10,2.5,"2024-01-01"
+キーワード,URL,ランク,距離,...
+"龍郷町 求人","https://jp.stanby.com/...",3,1344,...
+"龍谷大学 求人","https://jp.stanby.com/...",6,1472,...
 ```
 
 必要なカラム:
-- `keyword`: 検索キーワード
-- `url`: ページURL
-- `rank`: 検索順位
-- `distance`: 距離スコア
-- `date`: 日付（自動付与も可能）
+- `キーワード`: 検索キーワード
+- `URL`: ページURL
+- `ランク`: 検索順位（数値または"50+"）
+- `距離`: 距離スコア（数値）
+- ファイル名から日付を自動抽出（例: `Site_xxx_2025-11-08.csv`）
 
 ### 出力ファイル
 
 1. **マージデータ**: `data/processed/merged_data_YYYYMMDD_HHMMSS.csv`
+   - 全CSVファイルを統合し、必要カラムのみ抽出
+
 2. **分析結果**: `data/analysis/weekly_analysis_YYYYMMDD_HHMMSS.csv`
+   - キーワード×URLごとの前期比較データ（順位変化、距離変化など）
+
 3. **示唆レポート**: `data/analysis/insights_report_YYYYMMDD_HHMMSS.txt`
+   - 改善/下落Top 10、統計サマリー
+
+**注**: `50+`や空URLのデータは分析時に自動除外されます。
 
 ## カスタマイズ
 
