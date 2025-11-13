@@ -62,11 +62,21 @@ FOLDER_ID = '1sSy8mDQgtkmyODigpIiWiNh6hOJxG1Pt'
 
 ## 使い方
 
-### ローカルで実行
+### 簡単実行（推奨）
+
+```bash
+# 全ての処理を一括実行
+./run_analysis.sh
+
+# 完了したらGitHubにプッシュ
+git push origin main
+```
+
+### 個別実行
 
 ```bash
 # 1. Google Driveからデータをダウンロード
-python download_from_drive.py
+python download_from_drive_oauth.py
 
 # 2. CSVファイルをマージ
 python merge_data.py
@@ -74,14 +84,17 @@ python merge_data.py
 # 3. トレンド分析を実行
 python analyze_trends.py
 
-# 4. 結果をGoogle Driveにアップロード
-python upload_to_drive.py
+# 4. 結果をコミット
+git add data/analysis/*
+git commit -m "Add SEO analysis results"
+git push origin main
 ```
 
-### GitHub Actionsで自動実行
+### 運用フロー
 
-- **自動実行**: 毎週月曜日午前9時（JST）に自動実行されます
-- **手動実行**: GitHubリポジトリの Actions タブから手動でトリガー可能
+1. **週次実行**: 毎週手動で `./run_analysis.sh` を実行
+2. **結果確認**: `data/analysis/` フォルダ内のレポートを確認
+3. **GitHub**: `git push` で結果を共有・バックアップ
 
 ## データ形式
 

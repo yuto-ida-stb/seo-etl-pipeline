@@ -14,8 +14,9 @@ dist/
 # Data files
 data/raw/*.csv
 data/processed/*.csv
-data/analysis/*.csv
-data/analysis/*.txt
+# 分析結果はGitで管理する
+# data/analysis/*.csv
+# data/analysis/*.txt
 
 # Credentials
 credentials.json
