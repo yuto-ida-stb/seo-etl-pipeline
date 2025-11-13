@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import os
+import glob
 from pathlib import Path
 
 def calculate_weekly_changes(df: pd.DataFrame, weeks: int = 12):
@@ -9,14 +10,29 @@ def calculate_weekly_changes(df: pd.DataFrame, weeks: int = 12):
     週次の順位と距離の差分、変化率を計算する
 
     Args:
-        df: マージされたデータフレーム（date, keyword, url, rank, distanceカラムを含む）
+        df: マージされたデータフレーム（date, キーワード, URL, ランク, 距離カラムを含む）
         weeks: 遡る週数（デフォルト12週=3ヶ月）
 
     Returns:
         変化率と差分を含むデータフレーム
     """
+    # カラム名を英語にマッピング
+    df = df.rename(columns={
+        'キーワード': 'keyword',
+        'URL': 'url',
+        'ランク': 'rank',
+        '距離': 'distance'
+    })
+
+    # データ型を変換
+    df['rank'] = pd.to_numeric(df['rank'], errors='coerce')
+    df['distance'] = pd.to_numeric(df['distance'], errors='coerce')
+
     # 日付カラムをdatetime型に変換
     df['date'] = pd.to_datetime(df['date'])
+
+    # NaNを含む行を除外
+    df = df.dropna(subset=['rank', 'distance'])
 
     # データを日付順にソート
     df = df.sort_values(['keyword', 'url', 'date'])
@@ -115,12 +131,16 @@ def generate_insights(analysis_df: pd.DataFrame, output_file: str = None):
     return report
 
 if __name__ == "__main__":
-    # マージ済みデータを読み込み
-    input_file = "./data/processed/merged_data.csv"
+    # マージ済みデータを読み込み（最新のファイルを自動検出）
+    processed_folder = "./data/processed"
+    csv_files = sorted(glob.glob(os.path.join(processed_folder, "merged_data_*.csv")))
 
-    if not os.path.exists(input_file):
-        print(f"エラー: {input_file}が見つかりません。先にmerge_data.pyを実行してください。")
+    if not csv_files:
+        print(f"エラー: {processed_folder}にマージ済みファイルが見つかりません。先にmerge_data.pyを実行してください。")
         exit(1)
+
+    input_file = csv_files[-1]  # 最新のファイルを使用
+    print(f"使用するファイル: {input_file}")
 
     df = pd.read_csv(input_file)
     print(f"データ読み込み完了: {len(df)}行")

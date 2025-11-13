@@ -19,7 +19,8 @@ data/analysis/*.txt
 
 # Credentials
 credentials.json
-*.json
+token.pickle
+client_secret_*.json
 
 # IDE
 .vscode/

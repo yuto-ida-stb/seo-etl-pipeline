@@ -28,10 +28,14 @@ def merge_weekly_data(input_folder: str, output_folder: str, columns_to_keep: li
         print(f"読み込み中: {file}")
         df = pd.read_csv(file)
 
-        # ファイル名から日付を抽出（ファイル名に日付が含まれていると仮定）
+        # ファイル名から日付を抽出（例: Site_65a6192ed395_キーワード_2025-11-08_2025-11-08.csv）
         filename = os.path.basename(file)
-        # 日付カラムがない場合は追加
-        if 'date' not in df.columns and 'Date' not in df.columns:
+        # ファイル名から最後の日付部分を抽出
+        import re
+        date_match = re.search(r'(\d{4}-\d{2}-\d{2})\.csv$', filename)
+        if date_match:
+            df['date'] = date_match.group(1)
+        else:
             df['date'] = filename.replace('.csv', '')
 
         dataframes.append(df)
@@ -66,12 +70,12 @@ def merge_weekly_data(input_folder: str, output_folder: str, columns_to_keep: li
 
 if __name__ == "__main__":
     # 使用例
-    # 必要に応じて保持するカラムを指定
+    # 必要に応じて保持するカラムを指定（日本語カラム名に対応）
     columns_to_keep = [
-        'keyword',
-        'url',
-        'rank',
-        'distance',
+        'キーワード',
+        'URL',
+        'ランク',
+        '距離',
         'date',
         # 必要なカラムを追加
     ]
