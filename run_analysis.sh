@@ -26,8 +26,14 @@ python analyze_trends.py
 echo "✓ 分析完了"
 echo ""
 
-# ステップ4: 結果をGitにコミット
-echo "[4/4] 分析結果をGitにコミット中..."
+# ステップ4: Google Driveにアップロード
+echo "[4/5] Google Driveに結果をアップロード中..."
+python upload_to_drive_oauth.py
+echo "✓ アップロード完了"
+echo ""
+
+# ステップ5: 結果をGitにコミット
+echo "[5/5] 分析結果をGitにコミット中..."
 TIMESTAMP=$(date +"%Y-%m-%d")
 
 git add data/analysis/*.csv data/analysis/*.txt
