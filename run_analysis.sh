@@ -32,17 +32,23 @@ python query_search_console.py 12 50
 echo "✓ Search Console分析完了"
 echo ""
 
-# ステップ5: Google Driveにアップロード
-echo "[5/6] Google Driveに結果をアップロード中..."
+# ステップ5: Dify用データをエクスポート
+echo "[5/7] Dify用データをエクスポート中..."
+python export_for_dify.py
+echo "✓ Difyエクスポート完了"
+echo ""
+
+# ステップ6: Google Driveにアップロード
+echo "[6/7] Google Driveに結果をアップロード中..."
 python upload_to_drive_oauth.py
 echo "✓ アップロード完了"
 echo ""
 
-# ステップ6: 結果をGitにコミット
-echo "[6/6] 分析結果をGitにコミット中..."
+# ステップ7: 結果をGitにコミット
+echo "[7/7] 分析結果をGitにコミット中..."
 TIMESTAMP=$(date +"%Y-%m-%d")
 
-git add data/analysis/*.csv data/analysis/*.txt
+git add data/analysis/*.csv data/analysis/*.txt data/dify_export/*.md
 # Search ConsoleデータはGoogle Driveのみに保存（Gitには含めない）
 git commit -m "Add SEO analysis results for ${TIMESTAMP}
 

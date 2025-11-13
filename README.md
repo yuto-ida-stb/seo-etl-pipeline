@@ -1,6 +1,6 @@
-# SEO Data Analysis Pipeline
+# SEO ETL Pipeline
 
-週次のSEOデータを自動的にダウンロード、分析し、Google Driveにアップロードするパイプライン
+SEOデータの抽出・変換・ロード（ETL）を自動化し、Difyチャットボットと連携するパイプライン
 
 > **注意**: 現在は日次データで動作確認中です。Google Driveに週次平均データ（3ヶ月分）が配置されると、自動的に週次分析に切り替わります。
 
@@ -17,9 +17,15 @@
 - インプレッション、CTR、順位の前週比計算
 - 変化率・差分の集計
 
+### Dify連携（チャットボット）
+- 分析結果をMarkdown形式でエクスポート
+- Dify APIによるナレッジベース自動更新（オプション）
+- データ辞書・メタデータの自動生成
+
 ### 共通機能
 - Google Driveへの結果自動アップロード（フォルダ別管理）
 - 手動実行ワークフロー（OAuth認証）
+- セキュリティ対策（認証情報の暗号化、Path Traversal対策）
 
 ## Google Driveフォルダ構成
 
@@ -60,7 +66,32 @@ seo_data/
 pip install -r requirements.txt
 ```
 
-### 2. Google Drive API認証設定
+### 2. Difyチャットボット設定（オプション）
+
+#### 手動アップロード（簡単）
+
+1. [Dify](https://dify.ai)でアカウント作成
+2. ナレッジベースを作成（例: `SEO分析データ`）
+3. 分析実行後、以下をアップロード：
+   ```bash
+   ./run_analysis.sh  # 分析実行
+   # data/dify_export/*.md をDifyナレッジベースに手動アップロード
+   ```
+
+#### API自動更新（高度）
+
+1. Difyでナレッジベース作成後、API Keyを取得
+2. `.env`ファイルを作成：
+   ```bash
+   cp .env.example .env
+   # .env を編集してAPI KeyとDataset IDを設定
+   ```
+3. 自動更新スクリプトを実行：
+   ```bash
+   python upload_to_dify_api.py
+   ```
+
+### 3. Google Drive API認証設定
 
 #### ローカル実行の場合:
 1. [Google Cloud Console](https://console.cloud.google.com/)でプロジェクトを作成
@@ -74,7 +105,7 @@ pip install -r requirements.txt
 2. GitHubリポジトリの Settings > Secrets and variables > Actions に移動
 3. 新しいシークレット `GCP_SA_KEY` を作成し、JSONキーの内容を貼り付け
 
-### 3. フォルダIDの設定
+### 4. フォルダIDの設定
 
 `download_from_drive.py` と `upload_to_drive.py` の `FOLDER_ID` を更新してください:
 
@@ -87,8 +118,15 @@ FOLDER_ID = '1sSy8mDQgtkmyODigpIiWiNh6hOJxG1Pt'
 ### 簡単実行（推奨）
 
 ```bash
-# 全ての処理を一括実行
+# 全ての処理を一括実行（7ステップ）
 ./run_analysis.sh
+# 1. Google Driveからダウンロード
+# 2. CSVマージ
+# 3. SEOランク分析
+# 4. Search Console分析
+# 5. Dify用データエクスポート
+# 6. Google Driveにアップロード
+# 7. Gitコミット
 
 # 完了したらGitHubにプッシュ
 git push origin main
