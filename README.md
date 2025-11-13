@@ -6,12 +6,32 @@
 
 ## 機能
 
+### SEOランク分析
 - Google Driveからのデータファイル自動ダウンロード
 - 複数ファイルのマージと不要カラムの削除
 - 期間比較による順位・距離の差分と変化率の計算
 - 分析結果のレポート生成（改善/下落Top 10など）
-- Google Driveへの結果自動アップロード（analysis_resultsフォルダ）
+
+### Search Console分析（r_hash別）
+- BigQueryからr_hash別の週次データ取得
+- インプレッション、CTR、順位の前週比計算
+- 変化率・差分の集計
+
+### 共通機能
+- Google Driveへの結果自動アップロード（フォルダ別管理）
 - 手動実行ワークフロー（OAuth認証）
+
+## Google Driveフォルダ構成
+
+```
+SEO Data/
+├── 00_raw_data/                    # 週次平均データ（手動アップロード用）
+├── 01_seo_rank_analysis/           # SEOランク・距離の分析結果
+│   ├── weekly_analysis_YYYYMMDD.csv
+│   └── insights_report_YYYYMMDD.txt
+└── 02_search_console_analysis/     # Search Console(r_hash)の分析結果
+    └── search_console_weekly_YYYYMMDD.csv
+```
 
 ## ディレクトリ構造
 

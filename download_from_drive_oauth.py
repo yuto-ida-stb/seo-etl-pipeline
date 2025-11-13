@@ -9,8 +9,20 @@ from pathlib import Path
 
 # Google Drive設定
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
-FOLDER_ID = '1sSy8mDQgtkmyODigpIiWiNh6hOJxG1Pt'
 OUTPUT_DIR = './data/raw'
+
+# フォルダIDをロード
+import json
+if os.path.exists('drive_folder_ids.json'):
+    with open('drive_folder_ids.json', 'r') as f:
+        FOLDER_IDS = json.load(f)
+    # 00_raw_dataフォルダからダウンロード
+    FOLDER_ID = FOLDER_IDS.get('00_raw_data', '1sSy8mDQgtkmyODigpIiWiNh6hOJxG1Pt')
+    print(f"ダウンロード元: 00_raw_data フォルダ")
+else:
+    # 後方互換性: フォルダIDが見つからない場合は元のフォルダを使用
+    FOLDER_ID = '1sSy8mDQgtkmyODigpIiWiNh6hOJxG1Pt'
+    print(f"ダウンロード元: 親フォルダ（後方互換モード）")
 
 def authenticate():
     """Google Drive APIの認証（OAuth）"""

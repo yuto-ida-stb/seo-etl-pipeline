@@ -8,9 +8,16 @@ import glob
 
 # Google Drive設定
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
-# 分析結果をアップロードする別フォルダのID（後で作成）
-UPLOAD_FOLDER_ID = None  # 別フォルダを作成してIDをここに設定
+PARENT_FOLDER_ID = '1sSy8mDQgtkmyODigpIiWiNh6hOJxG1Pt'
 ANALYSIS_DIR = './data/analysis'
+
+# フォルダIDをロード
+import json
+if os.path.exists('drive_folder_ids.json'):
+    with open('drive_folder_ids.json', 'r') as f:
+        FOLDER_IDS = json.load(f)
+else:
+    FOLDER_IDS = {}
 
 def authenticate():
     """Google Drive APIの認証（OAuth）"""
@@ -125,8 +132,8 @@ def upload_file(service, file_path, folder_id):
         print(f'アップロード失敗: {file_name} - {e}')
         return None
 
-def upload_analysis_results(service, analysis_dir, parent_folder_id):
-    """分析結果ファイルを全てアップロード"""
+def upload_analysis_results(service, analysis_dir):
+    """SEOランク分析結果をアップロード"""
     # 最新のファイルのみをアップロード
     csv_files = sorted(glob.glob(os.path.join(analysis_dir, 'weekly_analysis_*.csv')))
     txt_files = sorted(glob.glob(os.path.join(analysis_dir, 'insights_report_*.txt')))
@@ -142,25 +149,53 @@ def upload_analysis_results(service, analysis_dir, parent_folder_id):
     if txt_files:
         files.append(txt_files[-1])
 
-    print(f'最新の{len(files)}個のファイルをアップロードします\n')
+    print(f'SEOランク分析: 最新の{len(files)}個のファイルをアップロードします')
 
-    # "analysis_results" フォルダを作成または検索
-    folder = find_or_create_folder(service, 'analysis_results', parent_folder_id)
-    folder_id = folder.get('id')
-    print()
+    # 01_seo_rank_analysis フォルダにアップロード
+    folder_id = FOLDER_IDS.get('01_seo_rank_analysis')
+    if not folder_id:
+        print('エラー: フォルダIDが見つかりません。setup_drive_folders.pyを実行してください。')
+        return
+
+    print(f'アップロード先: 01_seo_rank_analysis\n')
 
     for file_path in files:
         upload_file(service, file_path, folder_id)
         print()
 
-if __name__ == '__main__':
-    # データフォルダと同じ親フォルダにアップロード
-    PARENT_FOLDER_ID = '1sSy8mDQgtkmyODigpIiWiNh6hOJxG1Pt'
+def upload_search_console_results(service, search_console_dir='./data/search_console'):
+    """Search Console分析結果をアップロード"""
+    # 最新のCSVファイルを取得
+    csv_files = sorted(glob.glob(os.path.join(search_console_dir, 'search_console_weekly_*.csv')))
 
+    if not csv_files:
+        print(f'{search_console_dir}にアップロードするファイルが見つかりません')
+        return
+
+    latest_file = csv_files[-1]
+    print(f'Search Console分析: 最新ファイルをアップロードします')
+
+    # 02_search_console_analysis フォルダにアップロード
+    folder_id = FOLDER_IDS.get('02_search_console_analysis')
+    if not folder_id:
+        print('エラー: フォルダIDが見つかりません。setup_drive_folders.pyを実行してください。')
+        return
+
+    print(f'アップロード先: 02_search_console_analysis\n')
+    upload_file(service, latest_file, folder_id)
+    print()
+
+if __name__ == '__main__':
     try:
         service = authenticate()
-        upload_analysis_results(service, ANALYSIS_DIR, PARENT_FOLDER_ID)
-        print('✓ アップロード完了')
+
+        # SEOランク分析結果をアップロード
+        upload_analysis_results(service, ANALYSIS_DIR)
+
+        # Search Console分析結果をアップロード（ファイルがあれば）
+        upload_search_console_results(service)
+
+        print('✓ 全てのアップロードが完了しました')
     except Exception as e:
         print(f'エラー: {e}')
         exit(1)
