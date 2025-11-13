@@ -40,24 +40,30 @@ def check_table_schema():
 
     return table.schema
 
-def get_weekly_search_console_data(weeks: int = 12):
+def get_weekly_search_console_data(weeks: int = 12, min_impressions: int = 10):
     """
     週次のSearch Consoleデータを取得し、前週比を計算
 
     r_hash別（SEO向け求人一覧ページ）の週次集計を行います。
+    パフォーマンス向上のため、一定以上のインプレッションがあるr_hashのみ取得します。
 
     Args:
         weeks: 取得する週数（デフォルト12週=3ヶ月）
+        min_impressions: 週次の最小インプレッション数（デフォルト10）
 
     Returns:
         週次データと前週比を含むDataFrame
     """
     client = get_bigquery_client()
 
-    # 過去N週間のデータを週次集計
+    print(f"BigQueryクエリを構築中...")
+    print(f"  対象期間: 過去{weeks}週")
+    print(f"  最小インプレッション: {min_impressions}/週")
+
+    # 最適化されたクエリ：WHEREを先に適用してスキャン量を削減
     query = f"""
-    WITH r_hash_data AS (
-      -- URLからr_hashを抽出（/r_で始まるURL）
+    WITH filtered_data AS (
+      -- 最初にフィルタを適用してデータ量を削減
       SELECT
         data_date,
         REGEXP_EXTRACT(url, r'/r_([a-f0-9]+)') as r_hash,
@@ -65,8 +71,13 @@ def get_weekly_search_console_data(weeks: int = 12):
         clicks,
         sum_position
       FROM `{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}`
-      WHERE url LIKE 'https://jp.stanby.com/r_%'
-        AND data_date >= DATE_SUB(CURRENT_DATE(), INTERVAL {weeks} WEEK)
+      WHERE
+        -- 日付フィルタを最初に適用（パーティションがあれば高速）
+        data_date >= DATE_SUB(CURRENT_DATE(), INTERVAL {weeks} WEEK)
+        -- r_hashページのみ
+        AND url LIKE 'https://jp.stanby.com/r_%'
+        -- インプレッションがあるもののみ
+        AND impressions > 0
     ),
     daily_aggregated AS (
       -- 日次で集計（クエリ等を集約）
@@ -76,7 +87,7 @@ def get_weekly_search_console_data(weeks: int = 12):
         SUM(impressions) as impressions,
         SUM(clicks) as clicks,
         SUM(sum_position) as sum_position
-      FROM r_hash_data
+      FROM filtered_data
       WHERE r_hash IS NOT NULL
       GROUP BY data_date, r_hash
     ),
@@ -92,6 +103,8 @@ def get_weekly_search_console_data(weeks: int = 12):
         COUNT(DISTINCT data_date) as days_count
       FROM daily_aggregated
       GROUP BY r_hash, week_start
+      -- 週次インプレッションが一定以上のr_hashのみ
+      HAVING SUM(impressions) >= {min_impressions}
     ),
     weekly_with_prev AS (
       SELECT
@@ -145,9 +158,30 @@ def get_weekly_search_console_data(weeks: int = 12):
     ORDER BY week_start DESC, imp_diff DESC
     """
 
-    print("BigQueryクエリ実行中...")
-    df = client.query(query).to_dataframe()
-    print(f"取得完了: {len(df)}行")
+    print("\nBigQueryクエリ実行中...")
+    print("※大量データのため、数分かかる場合があります...")
+
+    # ジョブを開始
+    query_job = client.query(query)
+
+    # 進捗を表示しながら待機
+    import time
+    start_time = time.time()
+    while not query_job.done():
+        elapsed = int(time.time() - start_time)
+        print(f"  実行中... ({elapsed}秒経過)", end='\r')
+        time.sleep(2)
+
+    elapsed = int(time.time() - start_time)
+    print(f"\n✓ クエリ完了 ({elapsed}秒)")
+
+    # 結果を取得
+    print("結果を取得中...")
+    df = query_job.to_dataframe()
+    print(f"✓ 取得完了: {len(df):,}行")
+
+    if len(df) == 0:
+        print("\n警告: データが0件でした。期間やフィルタ条件を確認してください。")
 
     return df
 
@@ -172,16 +206,41 @@ if __name__ == '__main__':
     else:
         # データ取得モード
         try:
-            df = get_weekly_search_console_data(weeks=12)
+            # デフォルト: 12週間、最小インプレッション10
+            weeks = int(sys.argv[1]) if len(sys.argv) > 1 else 12
+            min_imp = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+
+            print("="*50)
+            print("Search Console 週次データ取得")
+            print("="*50)
+
+            df = get_weekly_search_console_data(weeks=weeks, min_impressions=min_imp)
+
+            if len(df) == 0:
+                print("\n⚠ データが取得できませんでした")
+                sys.exit(0)
+
             output_file = save_to_csv(df)
 
             # サマリー表示
-            print("\n=== データサマリー ===")
+            print("\n" + "="*50)
+            print("=== データサマリー ===")
+            print("="*50)
             print(f"対象期間: {df['week_start'].min()} ～ {df['week_start'].max()}")
-            print(f"ユニークr_hash数: {df['r_hash'].nunique()}")
-            print(f"総レコード数: {len(df)}")
+            print(f"ユニークr_hash数: {df['r_hash'].nunique():,}")
+            print(f"総レコード数: {len(df):,}")
+            print(f"\nTop 5 インプレッション増加:")
+            print(df.nlargest(5, 'imp_diff')[['r_hash', 'week_start', 'total_impressions', 'imp_diff', 'imp_change_rate']].to_string(index=False))
+            print(f"\nTop 5 CTR改善:")
+            print(df.nlargest(5, 'ctr_diff')[['r_hash', 'week_start', 'avg_ctr', 'ctr_diff', 'ctr_change_rate']].to_string(index=False))
 
-            print("\n完了！")
+            print("\n✅ 完了！")
+            print(f"ファイル: {output_file}")
+        except KeyboardInterrupt:
+            print("\n\n中断されました")
+            sys.exit(1)
         except Exception as e:
-            print(f"エラー: {e}")
+            print(f"\n❌ エラー: {e}")
+            import traceback
+            traceback.print_exc()
             sys.exit(1)

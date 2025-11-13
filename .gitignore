@@ -14,7 +14,8 @@ dist/
 # Data files
 data/raw/*.csv
 data/processed/*.csv
-# 分析結果はGitで管理する
+data/search_console/*.csv  # Search Consoleデータは大きすぎるためGitから除外
+# 分析結果はGitで管理する（SEOランク分析のみ）
 # data/analysis/*.csv
 # data/analysis/*.txt
 
