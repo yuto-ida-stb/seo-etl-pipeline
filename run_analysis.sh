@@ -42,8 +42,9 @@ echo ""
 echo "[6/6] 分析結果をGitにコミット中..."
 TIMESTAMP=$(date +"%Y-%m-%d")
 
-git add data/analysis/*.csv data/analysis/*.txt data/search_console/*.csv
-git commit -m "Add SEO and Search Console analysis results for ${TIMESTAMP}
+git add data/analysis/*.csv data/analysis/*.txt
+# Search ConsoleデータはGoogle Driveのみに保存（Gitには含めない）
+git commit -m "Add SEO analysis results for ${TIMESTAMP}
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
