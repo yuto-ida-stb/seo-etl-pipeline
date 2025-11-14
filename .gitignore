@@ -34,3 +34,16 @@ drive_folder_ids.json
 # OS
 .DS_Store
 Thumbs.db
+
+# 大容量ファイル
+*.zip
+*.gz
+*.tar.gz
+*.rar
+*.7z
+*.parquet
+*.xlsx
+*.db
+*.sqlite
+*.jsonl
+*.log
