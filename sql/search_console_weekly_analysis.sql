@@ -102,7 +102,7 @@ SELECT
  query_hash,
  query_keyword,
  query_location,
- cate,
+ cate as category,
  week_start,
 
  -- 今週の指標（= 1週間前の週）
