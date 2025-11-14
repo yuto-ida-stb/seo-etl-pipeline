@@ -101,22 +101,13 @@ def upload_presentation_as_slides(service, file_path, folder_id, presentation_na
             file_id = existing_files[0]['id']
             print(f'既存のGoogle Slidesを更新中: {presentation_name}')
 
-            # 既存ファイルを削除して新規作成（更新だとGoogle Slides変換されない可能性があるため）
-            service.files().delete(fileId=file_id).execute()
-            print(f'  旧ファイルを削除しました')
-
-            # 新規作成
-            file_metadata = {
-                'name': presentation_name,
-                'parents': [folder_id],
-                'mimeType': target_mime_type
-            }
-            file = service.files().create(
-                body=file_metadata,
+            # 既存ファイルの内容を更新（URLは維持される）
+            file = service.files().update(
+                fileId=file_id,
                 media_body=media,
                 fields='id, name, webViewLink, mimeType'
             ).execute()
-            print(f'  新しいGoogle Slidesを作成しました')
+            print(f'  Google Slidesを更新しました（URLは変わりません）')
         else:
             # 新規ファイルを作成
             print(f'新しいGoogle Slidesを作成中: {presentation_name}')
