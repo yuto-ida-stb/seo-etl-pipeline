@@ -14,10 +14,13 @@ dist/
 # Data files
 data/raw/*.csv
 data/processed/*.csv
-data/search_console/*.csv  # Search Consoleデータは大きすぎるためGitから除外
 data/analysis/*.csv
 data/analysis/*.txt
-data/category_mapping.csv  # カテゴリマッピングデータ（5MB超）
+
+# Search Console and category mapping (large files)
+data/search_console/*.csv
+data/category_mapping.csv
+data/category_mapping.xlsx
 
 # Credentials
 credentials.json
