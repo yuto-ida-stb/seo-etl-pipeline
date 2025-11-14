@@ -136,9 +136,9 @@ footer: '2025年11月13-14日'
      ↓
 [4. Search Console分析]
      ↓
-[5. Claude Code考察生成]
+[5. Google Driveアップロード]
      ↓
-[6. Google Driveアップロード]
+[6. Claude Code考察生成]
 ```
 
 ---
