@@ -112,15 +112,15 @@ footer: '2025年11月13-14日'
    - `make all` で全処理を一括実行
    - 7ステップの自動パイプライン
 
-3. ✅ **Claude Codeでのインサイト生成**
-   - 分析結果から自動考察を生成
+3. ✅ **インデックス落ちr_hashの特定**
+   - site:検索データからの月次分析
+
+4. ❌ **Claude Codeでのインサイト生成**
+   - 分析結果から自動考察を生成（未実施）
 
 ---
 
 ## 2日目の成果（続き）
-
-4. ✅ **Difyチャットボット統合**
-   - Dify APIによるナレッジベース自動更新
 
 5. ✅ **SEOランク継続トレンド追跡**
    - カテゴリーマッピング統合
@@ -173,58 +173,6 @@ make all  # 7ステップを一括実行
 
 ---
 
-## 実装したスクリプト一覧
-
-| スクリプト | 機能 |
-|-----------|------|
-| `download_from_drive_oauth.py` | Google Driveからデータダウンロード |
-| `merge_data.py` | 複数CSVファイルのマージ |
-| `analyze_trends.py` | SEOランク・距離トレンド分析 |
-| `query_search_console.py` | BigQuery Search Console分析 |
-| `generate_insights.py` | Claude Codeで考察生成 |
-| `export_for_dify.py` | Dify用Markdownエクスポート |
-| `upload_to_drive_oauth.py` | 分析結果をGoogle Driveにアップロード |
-| `upload_to_dify_api.py` | Dify APIへ自動アップロード |
-
----
-
-## Makefile - 簡単操作
-
-### 全処理を一括実行
-```bash
-make all
-```
-
-### 個別実行も可能
-```bash
-make download              # Google Driveからダウンロード
-make merge                 # CSVマージ
-make analyze-seo           # SEOランク分析
-make analyze-search-console # Search Console分析（BigQueryでクエリ実行）
-make generate-insights     # Claude Code考察生成
-make upload                # Google Driveアップロード
-make commit                # Gitコミット
-```
-
----
-
-## Makefile - ユーティリティコマンド
-
-```bash
-make clean                 # 中間ファイルと分析結果を削除
-make setup-folders         # Google Driveフォルダ作成（初回のみ）
-make upload-raw-data       # ローカル生データをアップロード
-make upload-dify           # Dify API自動更新
-make diagram               # パイプライン図を生成（HTML）
-```
-
-### パラメータ指定も可能
-```bash
-make analyze-search-console WEEKS=24 MIN_IMP=100
-```
-
----
-
 ## データ処理の工夫
 
 ### 前処理の実装
@@ -243,27 +191,8 @@ make analyze-search-console WEEKS=24 MIN_IMP=100
 
 ---
 
-## Claude Code統合
-
-### 自動考察生成
-- 分析結果CSVを読み込み
-- AIが自動でインサイトを生成
-- Markdown形式で出力
-
-### 例：生成される考察
-- 順位上昇が大きいキーワードの特徴
-- 改善の傾向分析
-- 次のアクションの提案
-
-### 実行方法
-```bash
-make generate-insights
-```
-
----
-
 <!-- _class: lead -->
-# 成果物とデモ
+# 成果物
 
 ---
 
@@ -306,12 +235,15 @@ seo_data/
 
 ```
 SEO Data/
-├── 00_raw_data/                    # 週次平均データ
-├── 01_seo_rank_analysis/           # SEOランク・距離分析結果
+├── 00_raw_data/                              # 週次平均データ
+├── 01_seo_rank_analysis/                     # SEOランク・距離分析結果
 │   ├── weekly_analysis_YYYYMMDD.csv
 │   └── insights_report_YYYYMMDD.txt
-└── 02_search_console_analysis/     # Search Console分析結果
-    └── search_console_weekly_YYYYMMDD.csv
+├── 02_search_console_analysis/               # Search Console分析結果
+│   └── search_console_weekly_YYYYMMDD.csv
+├── 03_demand_metrics_category_mapping/       # カテゴリーマッピング
+├── 03_presentations/                         # プレゼンテーション資料
+└── 04_site_analysis/                         # site:検索分析
 ```
 
 ---
@@ -335,18 +267,6 @@ SEO Data/
 ---
 
 <!-- _class: lead -->
-# デモ
-
-## パイプライン図の表示
-
-```bash
-make diagram
-open docs/pipeline_diagram.html
-```
-
----
-
-<!-- _class: lead -->
 # 今後の展望
 
 ---
@@ -354,15 +274,18 @@ open docs/pipeline_diagram.html
 ## 今後の展開
 
 ### Phase3: 運用フェーズ
-1. **定期実行の自動化**
+1. **Difyチャットボット統合**
+   - Dify APIによるナレッジベース自動更新
+   - ワークフローの拡充
+
+2. **定期実行の自動化**
    - GitHub Actionsでの週次実行
    - 結果の自動配信
 
-2. **Difyワークフローの拡充**
-   - より高度な質問への対応
-   - 複数データソースの横断分析
+3. **Claude Codeでのインサイト生成**
+   - 分析結果から自動考察を生成
 
-3. **ダッシュボード化**
+4. **ダッシュボード化**
    - 可視化ツールとの連携
    - リアルタイムモニタリング
 

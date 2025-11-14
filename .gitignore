@@ -21,6 +21,7 @@ data/analysis/*.txt
 data/search_console/*.csv
 data/category_mapping.csv
 data/category_mapping.xlsx
+data/query_category_master.csv
 
 # Index drop analysis files (large)
 data/siteコロン結果*.xlsx
@@ -61,3 +62,7 @@ Thumbs.db
 *.sqlite
 *.jsonl
 *.log
+
+# Presentation files (generated)
+docs/presentation.pdf
+docs/presentation.pptx
