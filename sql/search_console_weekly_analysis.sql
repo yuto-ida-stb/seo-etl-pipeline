@@ -99,7 +99,7 @@ WITH
 -- ================================================================================
 -- 目的: 「前週」と「2週間前」のデータを比較し、差分と変化率を計算
 SELECT
- query_hash,
+ w.query_hash,
  query_keyword,
  query_location,
  cate as category,
