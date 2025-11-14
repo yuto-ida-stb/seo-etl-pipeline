@@ -74,11 +74,6 @@ def download_files_from_folder(service, folder_id, output_dir):
         file_name = file['name']
         file_path = os.path.join(output_dir, file_name)
 
-        # ファイルが既に存在する場合はスキップ
-        if os.path.exists(file_path):
-            print(f'スキップ: {file_name} (既に存在)')
-            continue
-
         print(f'ダウンロード中: {file_name}')
 
         request = service.files().get_media(fileId=file_id)

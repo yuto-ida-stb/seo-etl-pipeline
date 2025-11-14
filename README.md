@@ -115,50 +115,71 @@ FOLDER_ID = '1sSy8mDQgtkmyODigpIiWiNh6hOJxG1Pt'
 
 ## 使い方
 
-### 簡単実行（推奨）
+### 簡単実行（推奨）- Makefile
 
 ```bash
 # 全ての処理を一括実行（7ステップ）
-./run_analysis.sh
-# 1. Google Driveからダウンロード
-# 2. CSVマージ
-# 3. SEOランク分析
-# 4. Search Console分析
-# 5. Dify用データエクスポート
-# 6. Google Driveにアップロード
-# 7. Gitコミット
+make all
+# または
+make
 
 # 完了したらGitHubにプッシュ
 git push origin main
 ```
 
+**実行される7ステップ:**
+1. Google Driveからダウンロード
+2. CSVマージ
+3. SEOランク分析
+4. Search Console分析
+5. Dify用データエクスポート
+6. Google Driveにアップロード
+7. Gitコミット
+
 ### 個別実行
 
 ```bash
-# 1. Google Driveからデータをダウンロード
-python download_from_drive_oauth.py
-
-# 2. CSVファイルをマージ
-python merge_data.py
-
-# 3. トレンド分析を実行
-python analyze_trends.py
-
-# 4. 結果をコミット
-git add data/analysis/*
-git commit -m "Add SEO analysis results"
-git push origin main
+make download             # Google Driveからダウンロード
+make merge                # CSVマージ
+make analyze-seo          # SEOランク分析
+make analyze-search-console   # Search Console分析（パラメータ: WEEKS=12 MIN_IMP=50）
+make export-dify          # Difyエクスポート
+make upload               # Google Driveアップロード
+make commit               # Gitコミット
 ```
+
+### パラメータ指定
+
+```bash
+# Search Console分析の期間を変更
+make analyze-search-console WEEKS=24 MIN_IMP=100
+
+# 全体実行時に適用
+make all WEEKS=24 MIN_IMP=100
+```
+
+### ユーティリティコマンド
+
+```bash
+make clean                # 中間ファイルと分析結果を削除
+make help                 # ヘルプ表示
+make setup-folders        # Google Driveフォルダ作成（初回のみ）
+make upload-raw-data      # ローカル生データをGoogle Driveにアップロード
+make upload-dify          # Dify API自動更新（要.env設定）
+```
+
+詳細は [Makefile使用ガイド](README_MAKEFILE.md) を参照
 
 ### 運用フロー
 
-1. **定期実行**: 手動で `./run_analysis.sh` を実行
+1. **定期実行**: `make all` で一括実行
    - 現在: 新しいデータが追加されたら実行
    - 将来: 週次平均データ配置後は毎週実行
 
 2. **結果確認**:
    - ローカル: `data/analysis/` フォルダ内のレポート
-   - Google Drive: [analysis_resultsフォルダ](https://drive.google.com/drive/folders/1EF8arydCbvLLih_TALvEE2LKOlH2XQEA)
+   - Google Drive: 各フォルダに自動アップロード
+   - Dify: `data/dify_export/` のファイルをナレッジベースにアップロード
 
 3. **GitHub**: `git push origin main` で結果を共有・バックアップ
 
