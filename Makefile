@@ -1,4 +1,4 @@
-.PHONY: help clean download merge analyze-seo analyze-search-console analyze-search-console-trends analyze-index-drop generate-insights export-dify upload commit all diagram slides slides-html slides-pdf slides-pptx upload-slides
+.PHONY: help clean download merge analyze-seo analyze-search-console analyze-search-console-trends analyze-index-drop generate-insights export-dify upload commit all diagram slides slides-html slides-pdf slides-pptx upload-slides deploy-slides
 
 # デフォルトターゲット
 help:
@@ -28,6 +28,7 @@ help:
 	@echo "  make slides-pdf           # プレゼン資料をPDF形式で生成"
 	@echo "  make slides-pptx          # プレゼン資料をPPTX形式で生成"
 	@echo "  make upload-slides        # プレゼン資料をGoogle Slidesにアップロード"
+	@echo "  make deploy-slides        # プレゼン資料をビルドしてGoogle Slidesにデプロイ"
 	@echo ""
 	@echo "パラメータ:"
 	@echo "  WEEKS=12                  # Search Console取得週数（デフォルト: 12）"
@@ -211,3 +212,10 @@ upload-slides:
 	@echo "プレゼン資料をGoogle Slidesにアップロード中..."
 	@echo "=========================================="
 	@python scripts/upload_slides_to_drive.py
+
+# プレゼン資料をビルドしてGoogle Slidesにデプロイ
+deploy-slides: slides-pptx upload-slides
+	@echo ""
+	@echo "=========================================="
+	@echo "✅ プレゼン資料のデプロイが完了しました！"
+	@echo "=========================================="
