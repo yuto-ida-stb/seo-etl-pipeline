@@ -185,6 +185,36 @@ def upload_search_console_results(service, search_console_dir='./data/search_con
     upload_file(service, latest_file, folder_id)
     print()
 
+def upload_index_drop_results(service, analysis_dir='./data/analysis'):
+    """インデックス落ち分析結果をアップロード"""
+    # 最新のインデックス落ちファイルを取得
+    summary_files = sorted(glob.glob(os.path.join(analysis_dir, 'index_drops_summary_*.txt')))
+    final_files = sorted(glob.glob(os.path.join(analysis_dir, 'index_drops_final_*.csv')))
+
+    if not summary_files and not final_files:
+        print(f'{analysis_dir}にインデックス落ち分析結果が見つかりません')
+        return
+
+    files_to_upload = []
+    if summary_files:
+        files_to_upload.append(summary_files[-1])
+    if final_files:
+        files_to_upload.append(final_files[-1])
+
+    print(f'インデックス落ち分析: {len(files_to_upload)}個のファイルをアップロードします')
+
+    # 01_seo_rank_analysis フォルダにアップロード（暫定）
+    folder_id = FOLDER_IDS.get('01_seo_rank_analysis')
+    if not folder_id:
+        print('エラー: フォルダIDが見つかりません。')
+        return
+
+    print(f'アップロード先: 01_seo_rank_analysis\n')
+
+    for file_path in files_to_upload:
+        upload_file(service, file_path, folder_id)
+        print()
+
 if __name__ == '__main__':
     try:
         service = authenticate()
@@ -194,6 +224,9 @@ if __name__ == '__main__':
 
         # Search Console分析結果をアップロード（ファイルがあれば）
         upload_search_console_results(service)
+
+        # インデックス落ち分析結果をアップロード（ファイルがあれば）
+        upload_index_drop_results(service)
 
         print('✓ 全てのアップロードが完了しました')
     except Exception as e:

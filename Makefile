@@ -1,4 +1,4 @@
-.PHONY: help clean download merge analyze-seo analyze-search-console generate-insights export-dify upload commit all diagram
+.PHONY: help clean download merge analyze-seo analyze-search-console analyze-index-drop generate-insights export-dify upload commit all diagram slides slides-html slides-pdf slides-pptx upload-slides
 
 # デフォルトターゲット
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "  make merge                # CSVファイルをマージ"
 	@echo "  make analyze-seo          # SEOランク分析を実行"
 	@echo "  make analyze-search-console  # Search Console分析を実行"
+	@echo "  make analyze-index-drop   # インデックス落ちr_hashを分析"
 	@echo "  make generate-insights    # Claude Codeで考察を生成（要API Key）"
 	@echo "  make export-dify          # Dify用データをエクスポート"
 	@echo "  make upload               # Google Driveにアップロード"
@@ -21,6 +22,11 @@ help:
 	@echo "  make upload-raw-data      # ローカルの生データをGoogle Driveにアップロード"
 	@echo "  make upload-dify          # Dify APIに自動アップロード（要.env設定）"
 	@echo "  make diagram              # パイプライン図を生成（HTML）"
+	@echo "  make slides               # プレゼン資料を全形式で生成（HTML/PDF/PPTX）"
+	@echo "  make slides-html          # プレゼン資料をHTML形式で生成"
+	@echo "  make slides-pdf           # プレゼン資料をPDF形式で生成"
+	@echo "  make slides-pptx          # プレゼン資料をPPTX形式で生成"
+	@echo "  make upload-slides        # プレゼン資料をGoogle Slidesにアップロード"
 	@echo ""
 	@echo "パラメータ:"
 	@echo "  WEEKS=12                  # Search Console取得週数（デフォルト: 12）"
@@ -76,6 +82,15 @@ analyze-search-console:
 	@echo "[4/8] Search Console 週次分析を実行中..."
 	@python scripts/query_search_console.py $(WEEKS) $(MIN_IMP)
 	@echo "✓ Search Console分析完了"
+	@echo ""
+
+# インデックス落ち分析（独立タスク）
+analyze-index-drop:
+	@echo "=========================================="
+	@echo "インデックス落ち分析を実行中..."
+	@echo "=========================================="
+	@python scripts/analyze_index_drop.py
+	@echo "✓ インデックス落ち分析完了"
 	@echo ""
 
 # ステップ5: Claude Codeで考察生成
@@ -138,3 +153,47 @@ diagram:
 	@echo "ブラウザで開くには:"
 	@echo "  open docs/pipeline_diagram.html"
 	@echo ""
+
+# プレゼン資料の生成（全形式）
+slides: slides-html slides-pdf slides-pptx
+	@echo ""
+	@echo "=========================================="
+	@echo "✅ プレゼン資料の生成が完了しました！"
+	@echo "=========================================="
+	@echo ""
+	@echo "生成されたファイル:"
+	@echo "  - docs/presentation.html"
+	@echo "  - docs/presentation.pdf"
+	@echo "  - docs/presentation.pptx"
+	@echo ""
+	@echo "ブラウザで開くには:"
+	@echo "  open docs/presentation.html"
+	@echo ""
+
+# プレゼン資料の生成（HTML形式）
+slides-html:
+	@echo "プレゼン資料をHTML形式で生成中..."
+	@command -v marp >/dev/null 2>&1 || { echo "Error: marp-cliがインストールされていません。"; echo "インストール: npm install -g @marp-team/marp-cli"; exit 1; }
+	@marp docs/presentation.md -o docs/presentation.html --html
+	@echo "✓ HTML形式のプレゼン資料を生成しました"
+
+# プレゼン資料の生成（PDF形式）
+slides-pdf:
+	@echo "プレゼン資料をPDF形式で生成中..."
+	@command -v marp >/dev/null 2>&1 || { echo "Error: marp-cliがインストールされていません。"; echo "インストール: npm install -g @marp-team/marp-cli"; exit 1; }
+	@marp docs/presentation.md -o docs/presentation.pdf --html --allow-local-files
+	@echo "✓ PDF形式のプレゼン資料を生成しました"
+
+# プレゼン資料の生成（PPTX形式）
+slides-pptx:
+	@echo "プレゼン資料をPPTX形式で生成中..."
+	@command -v marp >/dev/null 2>&1 || { echo "Error: marp-cliがインストールされていません。"; echo "インストール: npm install -g @marp-team/marp-cli"; exit 1; }
+	@marp docs/presentation.md -o docs/presentation.pptx --html --allow-local-files
+	@echo "✓ PPTX形式のプレゼン資料を生成しました"
+
+# プレゼン資料をGoogle Slidesにアップロード
+upload-slides:
+	@echo "=========================================="
+	@echo "プレゼン資料をGoogle Slidesにアップロード中..."
+	@echo "=========================================="
+	@python scripts/upload_slides_to_drive.py

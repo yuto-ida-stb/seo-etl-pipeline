@@ -22,6 +22,11 @@ data/search_console/*.csv
 data/category_mapping.csv
 data/category_mapping.xlsx
 
+# Index drop analysis files (large)
+data/siteコロン結果*.xlsx
+data/analysis/index_drops*.csv
+data/analysis/index_drops*.txt
+
 # Credentials
 credentials.json
 token.pickle
