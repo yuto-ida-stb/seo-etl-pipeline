@@ -239,6 +239,17 @@ def generate_insights(analysis_df: pd.DataFrame, original_df: pd.DataFrame = Non
     insights.append(f"順位改善件数（週次）: {len(analysis_df[analysis_df['rank_diff'] < 0])}件")
     insights.append(f"順位下落件数（週次）: {len(analysis_df[analysis_df['rank_diff'] > 0])}件")
 
+    # カテゴリ別サマリー
+    if 'カテゴリ' in analysis_df.columns and analysis_df['カテゴリ'].notna().sum() > 0:
+        insights.append("\n\n【カテゴリ別サマリー】")
+        category_summary = analysis_df[analysis_df['カテゴリ'].notna()].groupby('カテゴリ').agg({
+            'rank_diff': ['mean', 'count'],
+            'keyword': 'nunique'
+        }).round(2)
+        category_summary.columns = ['平均順位変化', 'データ数', 'ユニークキーワード数']
+        category_summary = category_summary.sort_values('平均順位変化')
+        insights.append(category_summary.to_string())
+
     report = "\n".join(insights)
     print(report)
 
@@ -265,8 +276,50 @@ if __name__ == "__main__":
     df = pd.read_csv(input_file)
     print(f"データ読み込み完了: {len(df)}行")
 
+    # カテゴリマッピングを読み込み
+    category_mapping_file = "./data/category_mapping.csv"
+    if os.path.exists(category_mapping_file):
+        print(f"カテゴリマッピングを読み込み中: {category_mapping_file}")
+        category_df = pd.read_csv(category_mapping_file)
+        print(f"カテゴリマッピング: {len(category_df)}行")
+
+        # キーワード列を統一
+        if 'キーワード' in df.columns:
+            keyword_col = 'キーワード'
+        else:
+            keyword_col = 'keyword'
+
+        # カテゴリ情報をマージ
+        df = df.merge(
+            category_df[['キーワード', 'カテゴリ', 'Groups']],
+            left_on=keyword_col,
+            right_on='キーワード',
+            how='left'
+        )
+        print(f"カテゴリ情報をマージ完了")
+        print(f"カテゴリがマッチしたキーワード数: {df['カテゴリ'].notna().sum()}件")
+    else:
+        print(f"警告: カテゴリマッピングファイルが見つかりません: {category_mapping_file}")
+
     # 週次変化を計算（3ヶ月 = 12週）
     analysis_df = calculate_weekly_changes(df, weeks=12)
+
+    # カテゴリ情報を分析結果にもマージ
+    if 'カテゴリ' in df.columns:
+        # キーワード列を確認
+        if 'キーワード' in df.columns:
+            df_category = df[['キーワード', 'URL', 'カテゴリ', 'Groups']].drop_duplicates()
+        else:
+            df_category = df[['keyword', 'url', 'カテゴリ', 'Groups']].drop_duplicates()
+            df_category = df_category.rename(columns={'keyword': 'キーワード', 'url': 'URL'})
+
+        analysis_df = analysis_df.merge(
+            df_category,
+            left_on=['keyword', 'url'],
+            right_on=['キーワード', 'URL'],
+            how='left'
+        )
+        print(f"分析結果にカテゴリ情報をマージ: {analysis_df['カテゴリ'].notna().sum()}件マッチ")
 
     # 分析結果を保存
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
