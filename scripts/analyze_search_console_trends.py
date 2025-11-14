@@ -394,6 +394,15 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
         positions = group['avg_position'].tolist()
         weeks = group['week_start'].tolist()
 
+        # position_diff（週次変化）を記録
+        position_diffs = []
+        for i in range(1, len(positions)):
+            if not pd.isna(positions[i]) and not pd.isna(positions[i-1]):
+                position_diffs.append(positions[i] - positions[i-1])
+
+        # 最新週のtotal_impressionsを取得
+        latest_impressions = group.iloc[-1]['total_impressions'] if 'total_impressions' in group.columns else 0
+
         # データポイントが2つ以上ある場合のみ分析
         if len(positions) >= 2:
             query_trends[query_hash] = {
@@ -402,9 +411,11 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
                 'query_hash': query_hash,
                 'category': category,
                 'positions': positions,
+                'position_diffs': position_diffs,
                 'weeks': weeks,
                 'first_position': positions[0],
                 'last_position': positions[-1],
+                'total_impressions': latest_impressions,
                 'data_points': len(positions)
             }
 
@@ -429,6 +440,7 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
 
     for query_hash, data in query_trends.items():
         positions = data['positions']
+        position_diffs = data['position_diffs']
         first_pos = data['first_position']
         last_pos = data['last_position']
 
@@ -436,48 +448,36 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
         if pd.isna(first_pos) or pd.isna(last_pos):
             continue
 
+        data['position_change'] = last_pos - first_pos
+
         # 1. 10位以内から11位以上に下落
         if first_pos <= 10 and last_pos > 10:
-            data['position_change'] = last_pos - first_pos
             dropped_from_top10.append(data)
 
         # 2. 11位以上から10位以下に上昇
         elif first_pos > 10 and last_pos <= 10:
-            data['position_change'] = last_pos - first_pos
             jumped_to_top10.append(data)
 
-        # 3 & 4: 徐々に変化しているもの（線形回帰で判定）
-        # NaNを除外
-        valid_positions = [p for p in positions if not pd.isna(p)]
+        # 3 & 4: 徐々に変化しているもの（position_diffが常に同じ方向）
+        if len(position_diffs) >= 2:
+            # position_diffが全てプラス（順位悪化=徐々に下降）
+            all_declining = all(diff > 0 for diff in position_diffs)
+            # position_diffが全てマイナス（順位改善=徐々に上昇）
+            all_improving = all(diff < 0 for diff in position_diffs)
 
-        if len(valid_positions) >= 3:
-            x = np.arange(len(valid_positions))
-            y = np.array(valid_positions)
-
-            # 線形回帰で傾きを計算
-            slope = np.polyfit(x, y, 1)[0]
-
-            # 単調性をチェック
-            is_monotonic_up = all(valid_positions[i] >= valid_positions[i-1] for i in range(1, len(valid_positions)))
-            is_monotonic_down = all(valid_positions[i] <= valid_positions[i-1] for i in range(1, len(valid_positions)))
-
-            data['slope'] = slope
-
-            # 3. 徐々に下降（順位が悪化）
-            if slope > 0.5:  # 正の傾き = 順位悪化
-                data['position_change'] = last_pos - first_pos
+            # 3. 徐々に下降（常にposition_diffがプラス=順位悪化）
+            if all_declining:
                 gradually_declining.append(data)
 
-            # 4. 徐々に上昇（順位が改善）
-            elif slope < -0.5:  # 負の傾き = 順位改善
-                data['position_change'] = last_pos - first_pos
+            # 4. 徐々に上昇（常にposition_diffがマイナス=順位改善）
+            elif all_improving:
                 gradually_improving.append(data)
 
-    # 結果をソート
-    dropped_from_top10.sort(key=lambda x: x['position_change'], reverse=True)
-    jumped_to_top10.sort(key=lambda x: x['position_change'])
-    gradually_declining.sort(key=lambda x: x['slope'], reverse=True)
-    gradually_improving.sort(key=lambda x: x['slope'])
+    # 結果をtotal_impressionsの降順でソート
+    dropped_from_top10.sort(key=lambda x: x['total_impressions'], reverse=True)
+    jumped_to_top10.sort(key=lambda x: x['total_impressions'], reverse=True)
+    gradually_declining.sort(key=lambda x: x['total_impressions'], reverse=True)
+    gradually_improving.sort(key=lambda x: x['total_impressions'], reverse=True)
 
     print(f"\n【1. 順位が10位以内から11位以上に下落】: {len(dropped_from_top10)}件")
     print(f"【2. 順位が11位以上から10位以下に上昇】: {len(jumped_to_top10)}件")
@@ -505,7 +505,7 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
         f.write(f"該当件数: {len(dropped_from_top10)}件\n\n")
 
         if dropped_from_top10:
-            f.write("Top 30:\n")
+            f.write("Top 30（インプレッション数順）:\n")
             for i, item in enumerate(dropped_from_top10[:30], 1):
                 f.write(f"\n{i}. query_hash: {item['query_hash']}\n")
                 if item['query_keyword']:
@@ -516,6 +516,7 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
                     f.write(f"   category: {item['category']}\n")
                 f.write(f"   初期順位: {item['first_position']:.1f} → 最新順位: {item['last_position']:.1f}\n")
                 f.write(f"   変化: {item['position_change']:+.1f}\n")
+                f.write(f"   インプレッション: {item['total_impressions']:,.0f}\n")
                 f.write(f"   データポイント: {item['data_points']}週\n")
 
         # 2. 11位以上から10位以下に上昇
@@ -525,7 +526,7 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
         f.write(f"該当件数: {len(jumped_to_top10)}件\n\n")
 
         if jumped_to_top10:
-            f.write("Top 30:\n")
+            f.write("Top 30（インプレッション数順）:\n")
             for i, item in enumerate(jumped_to_top10[:30], 1):
                 f.write(f"\n{i}. query_hash: {item['query_hash']}\n")
                 if item['query_keyword']:
@@ -536,6 +537,7 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
                     f.write(f"   category: {item['category']}\n")
                 f.write(f"   初期順位: {item['first_position']:.1f} → 最新順位: {item['last_position']:.1f}\n")
                 f.write(f"   変化: {item['position_change']:+.1f}\n")
+                f.write(f"   インプレッション: {item['total_impressions']:,.0f}\n")
                 f.write(f"   データポイント: {item['data_points']}週\n")
 
         # 3. 徐々に下降
@@ -545,7 +547,8 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
         f.write(f"該当件数: {len(gradually_declining)}件\n\n")
 
         if gradually_declining:
-            f.write("Top 30:\n")
+            f.write("Top 30（インプレッション数順）:\n")
+            f.write("※常にposition_diffがプラス（毎週順位が悪化）\n")
             for i, item in enumerate(gradually_declining[:30], 1):
                 f.write(f"\n{i}. query_hash: {item['query_hash']}\n")
                 if item['query_keyword']:
@@ -555,7 +558,8 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
                 if item['category']:
                     f.write(f"   category: {item['category']}\n")
                 f.write(f"   初期順位: {item['first_position']:.1f} → 最新順位: {item['last_position']:.1f}\n")
-                f.write(f"   変化: {item['position_change']:+.1f} (傾き: {item['slope']:.2f})\n")
+                f.write(f"   変化: {item['position_change']:+.1f}\n")
+                f.write(f"   インプレッション: {item['total_impressions']:,.0f}\n")
                 f.write(f"   データポイント: {item['data_points']}週\n")
 
         # 4. 徐々に上昇
@@ -565,7 +569,8 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
         f.write(f"該当件数: {len(gradually_improving)}件\n\n")
 
         if gradually_improving:
-            f.write("Top 30:\n")
+            f.write("Top 30（インプレッション数順）:\n")
+            f.write("※常にposition_diffがマイナス（毎週順位が改善）\n")
             for i, item in enumerate(gradually_improving[:30], 1):
                 f.write(f"\n{i}. query_hash: {item['query_hash']}\n")
                 if item['query_keyword']:
@@ -575,7 +580,8 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
                 if item['category']:
                     f.write(f"   category: {item['category']}\n")
                 f.write(f"   初期順位: {item['first_position']:.1f} → 最新順位: {item['last_position']:.1f}\n")
-                f.write(f"   変化: {item['position_change']:+.1f} (傾き: {item['slope']:.2f})\n")
+                f.write(f"   変化: {item['position_change']:+.1f}\n")
+                f.write(f"   インプレッション: {item['total_impressions']:,.0f}\n")
                 f.write(f"   データポイント: {item['data_points']}週\n")
 
         # カテゴリ別・キーワード別の傾向分析
@@ -629,7 +635,8 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
             'first_position': item['first_position'],
             'last_position': item['last_position'],
             'position_change': item['position_change'],
-            'slope': None
+            'total_impressions': item['total_impressions'],
+            'data_points': item['data_points']
         })
 
     for item in jumped_to_top10:
@@ -642,12 +649,13 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
             'first_position': item['first_position'],
             'last_position': item['last_position'],
             'position_change': item['position_change'],
-            'slope': None
+            'total_impressions': item['total_impressions'],
+            'data_points': item['data_points']
         })
 
     for item in gradually_declining:
         csv_data.append({
-            'trend_type': '徐々に下降',
+            'trend_type': '徐々に下降（常にposition_diff>0）',
             'query_keyword': item['query_keyword'],
             'query_location': item['query_location'],
             'query_hash': item['query_hash'],
@@ -655,12 +663,13 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
             'first_position': item['first_position'],
             'last_position': item['last_position'],
             'position_change': item['position_change'],
-            'slope': item['slope']
+            'total_impressions': item['total_impressions'],
+            'data_points': item['data_points']
         })
 
     for item in gradually_improving:
         csv_data.append({
-            'trend_type': '徐々に上昇',
+            'trend_type': '徐々に上昇（常にposition_diff<0）',
             'query_keyword': item['query_keyword'],
             'query_location': item['query_location'],
             'query_hash': item['query_hash'],
@@ -668,7 +677,8 @@ def analyze_search_console_trends(input_dir, output_dir, months=3):
             'first_position': item['first_position'],
             'last_position': item['last_position'],
             'position_change': item['position_change'],
-            'slope': item['slope']
+            'total_impressions': item['total_impressions'],
+            'data_points': item['data_points']
         })
 
     if csv_data:
