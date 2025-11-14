@@ -1,4 +1,4 @@
-.PHONY: help clean download merge analyze-seo analyze-search-console analyze-index-drop generate-insights export-dify upload commit all diagram slides slides-html slides-pdf slides-pptx upload-slides
+.PHONY: help clean download merge analyze-seo analyze-search-console analyze-search-console-trends analyze-index-drop generate-insights export-dify upload commit all diagram slides slides-html slides-pdf slides-pptx upload-slides
 
 # デフォルトターゲット
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "  make merge                # CSVファイルをマージ"
 	@echo "  make analyze-seo          # SEOランク分析を実行"
 	@echo "  make analyze-search-console  # Search Console分析を実行"
+	@echo "  make analyze-search-console-trends  # Search Console順位推移傾向を分析"
 	@echo "  make analyze-index-drop   # インデックス落ちr_hashを分析"
 	@echo "  make generate-insights    # Claude Codeで考察を生成（要API Key）"
 	@echo "  make export-dify          # Dify用データをエクスポート"
@@ -82,6 +83,19 @@ analyze-search-console:
 	@echo "[4/8] Search Console 週次分析を実行中..."
 	@python scripts/query_search_console.py $(WEEKS) $(MIN_IMP)
 	@echo "✓ Search Console分析完了"
+	@echo ""
+
+# Search Console順位推移傾向分析（独立タスク）
+analyze-search-console-trends:
+	@echo "=========================================="
+	@echo "Search Console順位推移傾向分析を実行中..."
+	@echo "=========================================="
+	@echo "1. Google Driveから過去3ヶ月分のデータをダウンロード中..."
+	@python scripts/download_search_console_history.py
+	@echo ""
+	@echo "2. 順位推移傾向を分析中..."
+	@python scripts/analyze_search_console_trends.py
+	@echo "✓ Search Console順位推移傾向分析完了"
 	@echo ""
 
 # インデックス落ち分析（独立タスク）

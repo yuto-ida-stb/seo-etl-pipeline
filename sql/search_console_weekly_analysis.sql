@@ -151,8 +151,8 @@ SELECT
  days_count
 
 FROM weekly_with_prev w
-left join `stanby-prod.temp_adhoc.query_category` m
-on w.query_hash = m.query_hash
+LEFT JOIN `stanby-prod.temp_adhoc.query_category` m
+  ON w.query_hash = m.query_hash
 -- 前週（week_startが1週間前の月曜日）のデータのみを出力
 WHERE week_start = DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 1 WEEK), WEEK(MONDAY))
 ORDER BY imp_diff DESC

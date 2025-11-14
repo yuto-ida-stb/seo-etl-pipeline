@@ -215,6 +215,66 @@ def upload_index_drop_results(service, analysis_dir='./data/analysis'):
         upload_file(service, file_path, folder_id)
         print()
 
+def upload_search_console_trends_results(service, analysis_dir='./data/analysis'):
+    """Search Console順位推移分析結果をアップロード"""
+    # 最新のSearch Console trendsファイルを取得
+    txt_files = sorted(glob.glob(os.path.join(analysis_dir, 'search_console_trends_*.txt')))
+    csv_files = sorted(glob.glob(os.path.join(analysis_dir, 'search_console_trends_*.csv')))
+
+    if not txt_files and not csv_files:
+        print(f'{analysis_dir}にSearch Console順位推移分析結果が見つかりません')
+        return
+
+    files_to_upload = []
+    if txt_files:
+        files_to_upload.append(txt_files[-1])
+    if csv_files:
+        files_to_upload.append(csv_files[-1])
+
+    print(f'Search Console順位推移分析: {len(files_to_upload)}個のファイルをアップロードします')
+
+    # 02_search_console_analysis フォルダにアップロード
+    folder_id = FOLDER_IDS.get('02_search_console_analysis')
+    if not folder_id:
+        print('エラー: フォルダIDが見つかりません。')
+        return
+
+    print(f'アップロード先: 02_search_console_analysis\n')
+
+    for file_path in files_to_upload:
+        upload_file(service, file_path, folder_id)
+        print()
+
+def upload_site_analysis_results(service, analysis_dir='./data/analysis'):
+    """site:解析結果をアップロード"""
+    # 最新のsite:解析ファイルを取得
+    csv_files = sorted(glob.glob(os.path.join(analysis_dir, 'site_analysis_*.csv')))
+    txt_files = sorted(glob.glob(os.path.join(analysis_dir, 'site_analysis_*.txt')))
+
+    if not csv_files and not txt_files:
+        print(f'{analysis_dir}にsite:解析結果が見つかりません')
+        return
+
+    files_to_upload = []
+    if csv_files:
+        files_to_upload.append(csv_files[-1])
+    if txt_files:
+        files_to_upload.append(txt_files[-1])
+
+    print(f'site:解析: {len(files_to_upload)}個のファイルをアップロードします')
+
+    # 04_site_analysis フォルダにアップロード
+    folder_id = FOLDER_IDS.get('04_site_analysis')
+    if not folder_id:
+        print('エラー: フォルダIDが見つかりません。')
+        return
+
+    print(f'アップロード先: 04_site_analysis\n')
+
+    for file_path in files_to_upload:
+        upload_file(service, file_path, folder_id)
+        print()
+
 if __name__ == '__main__':
     try:
         service = authenticate()
@@ -225,8 +285,14 @@ if __name__ == '__main__':
         # Search Console分析結果をアップロード（ファイルがあれば）
         upload_search_console_results(service)
 
+        # Search Console順位推移分析結果をアップロード（ファイルがあれば）
+        upload_search_console_trends_results(service)
+
         # インデックス落ち分析結果をアップロード（ファイルがあれば）
         upload_index_drop_results(service)
+
+        # site:解析結果をアップロード（ファイルがあれば）
+        upload_site_analysis_results(service)
 
         print('✓ 全てのアップロードが完了しました')
     except Exception as e:

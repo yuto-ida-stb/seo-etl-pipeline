@@ -27,6 +27,10 @@ data/siteコロン結果*.xlsx
 data/analysis/index_drops*.csv
 data/analysis/index_drops*.txt
 
+# Search Console trends analysis
+data/analysis/search_console_trends*.csv
+data/analysis/search_console_trends*.txt
+
 # Credentials
 credentials.json
 token.pickle

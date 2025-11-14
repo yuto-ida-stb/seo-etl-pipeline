@@ -70,7 +70,9 @@ def setup_folder_structure():
     folders = {
         '00_raw_data': '週次平均データ（手動アップロード用）',
         '01_seo_rank_analysis': 'SEOランク・距離の分析結果',
-        '02_search_console_analysis': 'Search Console(r_hash)の分析結果'
+        '02_search_console_analysis': 'Search Console(r_hash)の分析結果',
+        '03_presentations': 'プレゼンテーション資料',
+        '04_site_analysis': 'site:解析結果'
     }
 
     folder_ids = {}
