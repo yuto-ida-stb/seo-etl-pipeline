@@ -53,18 +53,34 @@ def download_files_from_folder(service, folder_id, output_dir):
     """指定されたGoogle DriveフォルダからCSVファイルをダウンロード"""
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    # フォルダ内のファイルを取得
-    query = f"'{folder_id}' in parents and mimeType='text/csv'"
+    # まずフォルダ内の全ファイルを取得してデバッグ
+    print(f"フォルダID: {folder_id} を確認中...")
+    query_all = f"'{folder_id}' in parents"
+    results_all = service.files().list(
+        q=query_all,
+        fields="files(id, name, mimeType, modifiedTime)",
+        orderBy="modifiedTime desc"
+    ).execute()
+
+    all_files = results_all.get('files', [])
+    print(f"フォルダ内の全ファイル数: {len(all_files)}")
+    if all_files:
+        for f in all_files[:5]:  # 最初の5件を表示
+            print(f"  - {f['name']} (mimeType: {f['mimeType']})")
+
+    # CSVファイルのみを取得（複数のmimeTypeに対応）
+    query = f"'{folder_id}' in parents and (mimeType='text/csv' or mimeType='application/vnd.ms-excel' or mimeType='text/plain')"
     results = service.files().list(
         q=query,
-        fields="files(id, name, modifiedTime)",
+        fields="files(id, name, mimeType, modifiedTime)",
         orderBy="modifiedTime desc"
     ).execute()
 
     files = results.get('files', [])
 
     if not files:
-        print('ファイルが見つかりませんでした')
+        print('CSVファイルが見つかりませんでした')
+        print('上記のファイル一覧を確認してください')
         return
 
     print(f'{len(files)}個のCSVファイルを検出しました')

@@ -1,4 +1,4 @@
-.PHONY: help clean download merge analyze-seo analyze-search-console generate-insights export-dify upload commit all
+.PHONY: help clean download merge analyze-seo analyze-search-console generate-insights export-dify upload commit all diagram
 
 # デフォルトターゲット
 help:
@@ -20,6 +20,7 @@ help:
 	@echo "  make setup-folders        # Google Driveフォルダを作成"
 	@echo "  make upload-raw-data      # ローカルの生データをGoogle Driveにアップロード"
 	@echo "  make upload-dify          # Dify APIに自動アップロード（要.env設定）"
+	@echo "  make diagram              # パイプライン図を生成（HTML）"
 	@echo ""
 	@echo "パラメータ:"
 	@echo "  WEEKS=12                  # Search Console取得週数（デフォルト: 12）"
@@ -125,4 +126,15 @@ upload-dify:
 	@echo "Dify APIに自動アップロード中..."
 	@python scripts/upload_to_dify_api.py
 	@echo "✓ Difyアップロード完了"
+	@echo ""
+
+# パイプライン図の生成
+diagram:
+	@echo "=========================================="
+	@echo "パイプライン図を生成中..."
+	@echo "=========================================="
+	@python scripts/generate_diagram.py
+	@echo ""
+	@echo "ブラウザで開くには:"
+	@echo "  open docs/pipeline_diagram.html"
 	@echo ""

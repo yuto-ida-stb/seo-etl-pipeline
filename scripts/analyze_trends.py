@@ -85,41 +85,159 @@ def calculate_weekly_changes(df: pd.DataFrame, weeks: int = 12):
 
     return pd.DataFrame(results)
 
-def generate_insights(analysis_df: pd.DataFrame, output_file: str = None):
+def analyze_trends_over_period(df: pd.DataFrame, min_data_points: int = 5):
     """
-    分析データから主要な示唆を生成
+    期間全体の推移を分析し、継続的に改善/悪化しているキーワードを抽出
 
     Args:
-        analysis_df: 分析済みデータフレーム
+        df: 元のデータフレーム（date, keyword, url, rank, distanceカラムを含む）
+        min_data_points: 分析に必要な最小データポイント数
+
+    Returns:
+        継続的改善/悪化キーワードのリスト
+    """
+    # カラム名を統一
+    if 'キーワード' in df.columns:
+        df = df.rename(columns={'キーワード': 'keyword', 'URL': 'url', 'ランク': 'rank', '距離': 'distance'})
+
+    df['rank'] = pd.to_numeric(df['rank'], errors='coerce')
+    df['distance'] = pd.to_numeric(df['distance'], errors='coerce')
+    df['date'] = pd.to_datetime(df['date'])
+    df = df.dropna(subset=['rank', 'distance'])
+    df = df.sort_values(['keyword', 'url', 'date'])
+
+    trends = []
+
+    for (keyword, url), group in df.groupby(['keyword', 'url']):
+        group = group.sort_values('date').reset_index(drop=True)
+
+        # データポイントが少ない場合はスキップ
+        if len(group) < min_data_points:
+            continue
+
+        # 最初と最後の順位
+        first_rank = group.iloc[0]['rank']
+        last_rank = group.iloc[-1]['rank']
+        total_change = last_rank - first_rank
+
+        # 線形回帰で傾向を計算
+        x = np.arange(len(group))
+        y = group['rank'].values
+
+        # 傾き（正＝悪化、負＝改善）
+        if len(x) > 1:
+            slope = np.polyfit(x, y, 1)[0]
+        else:
+            slope = 0
+
+        # 単調性チェック（連続して改善/悪化している回数）
+        improvements = 0
+        deteriorations = 0
+
+        for i in range(1, len(group)):
+            diff = group.iloc[i]['rank'] - group.iloc[i-1]['rank']
+            if diff < 0:  # 改善
+                improvements += 1
+            elif diff > 0:  # 悪化
+                deteriorations += 1
+
+        # 一貫性スコア（-1〜1、負＝改善傾向、正＝悪化傾向）
+        total_changes = improvements + deteriorations
+        if total_changes > 0:
+            consistency_score = (deteriorations - improvements) / total_changes
+        else:
+            consistency_score = 0
+
+        trends.append({
+            'keyword': keyword,
+            'url': url,
+            'first_date': group.iloc[0]['date'],
+            'last_date': group.iloc[-1]['date'],
+            'first_rank': first_rank,
+            'last_rank': last_rank,
+            'total_change': total_change,
+            'slope': slope,
+            'improvements': improvements,
+            'deteriorations': deteriorations,
+            'consistency_score': consistency_score,
+            'data_points': len(group)
+        })
+
+    return pd.DataFrame(trends)
+
+def generate_insights(analysis_df: pd.DataFrame, original_df: pd.DataFrame = None, output_file: str = None):
+    """
+    分析データから主要な示唆を生成（期間全体の推移ベース）
+
+    Args:
+        analysis_df: 分析済みデータフレーム（週次変化）
+        original_df: 元のデータフレーム（推移分析用）
         output_file: 示唆を保存するファイル名（Noneの場合は保存しない）
     """
     insights = []
 
-    insights.append("=== SEOデータ分析レポート ===\n")
+    insights.append("=== SEOデータ分析レポート（推移分析） ===\n")
     insights.append(f"分析期間: {analysis_df['date'].min().strftime('%Y-%m-%d')} ～ {analysis_df['date'].max().strftime('%Y-%m-%d')}\n")
     insights.append(f"総データ数: {len(analysis_df)}件\n")
 
-    # 順位が大きく改善したキーワード（Top 10）
-    insights.append("\n【順位が大きく改善したキーワード Top 10】")
-    top_improved = analysis_df.nsmallest(10, 'rank_diff')[['keyword', 'url', 'date', 'previous_rank', 'current_rank', 'rank_diff']]
-    insights.append(top_improved.to_string(index=False))
+    # 推移分析（元データがある場合）
+    if original_df is not None:
+        trends_df = analyze_trends_over_period(original_df, min_data_points=5)
 
-    # 順位が大きく下落したキーワード（Top 10）
-    insights.append("\n\n【順位が大きく下落したキーワード Top 10】")
-    top_declined = analysis_df.nlargest(10, 'rank_diff')[['keyword', 'url', 'date', 'previous_rank', 'current_rank', 'rank_diff']]
-    insights.append(top_declined.to_string(index=False))
+        # 継続的に改善しているキーワード（負の傾きが大きく、一貫性が高い）
+        improving = trends_df[
+            (trends_df['slope'] < 0) &  # 改善傾向
+            (trends_df['consistency_score'] < -0.3)  # 一貫して改善
+        ].sort_values('slope').head(10)
 
-    # 距離が大きく改善したキーワード（Top 10）
-    insights.append("\n\n【距離が大きく改善したキーワード Top 10】")
-    top_distance_improved = analysis_df.nsmallest(10, 'distance_diff')[['keyword', 'url', 'date', 'previous_distance', 'current_distance', 'distance_diff']]
-    insights.append(top_distance_improved.to_string(index=False))
+        insights.append("\n【継続的に順位が改善しているキーワード Top 10】")
+        insights.append("（期間全体で一貫して順位が上昇しているもの）\n")
+        if len(improving) > 0:
+            display_cols = ['keyword', 'first_rank', 'last_rank', 'total_change', 'improvements', 'data_points']
+            improving_display = improving[display_cols].copy()
+            improving_display.columns = ['キーワード', '初期順位', '最新順位', '総変化', '改善回数', 'データ数']
+            insights.append(improving_display.to_string(index=False))
+        else:
+            insights.append("該当なし")
+
+        # 継続的に悪化しているキーワード（正の傾きが大きく、一貫性が高い）
+        deteriorating = trends_df[
+            (trends_df['slope'] > 0) &  # 悪化傾向
+            (trends_df['consistency_score'] > 0.3)  # 一貫して悪化
+        ].sort_values('slope', ascending=False).head(10)
+
+        insights.append("\n\n【継続的に順位が悪化しているキーワード Top 10】")
+        insights.append("（期間全体で一貫して順位が下降しているもの）\n")
+        if len(deteriorating) > 0:
+            display_cols = ['keyword', 'first_rank', 'last_rank', 'total_change', 'deteriorations', 'data_points']
+            deteriorating_display = deteriorating[display_cols].copy()
+            deteriorating_display.columns = ['キーワード', '初期順位', '最新順位', '総変化', '悪化回数', 'データ数']
+            insights.append(deteriorating_display.to_string(index=False))
+        else:
+            insights.append("該当なし")
+
+        # 最も改善幅が大きいキーワード
+        insights.append("\n\n【期間全体で最も改善したキーワード Top 10】")
+        top_improved = trends_df.nsmallest(10, 'total_change')[['keyword', 'first_rank', 'last_rank', 'total_change', 'data_points']]
+        if len(top_improved) > 0:
+            top_improved_display = top_improved.copy()
+            top_improved_display.columns = ['キーワード', '初期順位', '最新順位', '総変化', 'データ数']
+            insights.append(top_improved_display.to_string(index=False))
+
+        # 最も悪化幅が大きいキーワード
+        insights.append("\n\n【期間全体で最も悪化したキーワード Top 10】")
+        top_declined = trends_df.nlargest(10, 'total_change')[['keyword', 'first_rank', 'last_rank', 'total_change', 'data_points']]
+        if len(top_declined) > 0:
+            top_declined_display = top_declined.copy()
+            top_declined_display.columns = ['キーワード', '初期順位', '最新順位', '総変化', 'データ数']
+            insights.append(top_declined_display.to_string(index=False))
 
     # 統計サマリー
     insights.append("\n\n【統計サマリー】")
-    insights.append(f"平均順位変化: {analysis_df['rank_diff'].mean():.2f}")
-    insights.append(f"平均距離変化: {analysis_df['distance_diff'].mean():.2f}")
-    insights.append(f"順位改善件数: {len(analysis_df[analysis_df['rank_diff'] < 0])}件")
-    insights.append(f"順位下落件数: {len(analysis_df[analysis_df['rank_diff'] > 0])}件")
+    insights.append(f"平均順位変化（週次）: {analysis_df['rank_diff'].mean():.2f}")
+    insights.append(f"平均距離変化（週次）: {analysis_df['distance_diff'].mean():.2f}")
+    insights.append(f"順位改善件数（週次）: {len(analysis_df[analysis_df['rank_diff'] < 0])}件")
+    insights.append(f"順位下落件数（週次）: {len(analysis_df[analysis_df['rank_diff'] > 0])}件")
 
     report = "\n".join(insights)
     print(report)
@@ -159,6 +277,6 @@ if __name__ == "__main__":
     analysis_df.to_csv(analysis_output, index=False, encoding='utf-8-sig')
     print(f"分析結果を保存: {analysis_output}")
 
-    # 示唆レポートを生成
+    # 示唆レポートを生成（元データも渡して推移分析を行う）
     insights_output = os.path.join(output_folder, f"insights_report_{timestamp}.txt")
-    generate_insights(analysis_df, insights_output)
+    generate_insights(analysis_df, original_df=df, output_file=insights_output)
